@@ -1,7 +1,7 @@
 {
   "name": "Mi App",
   "short_name": "CalculatorPro",
-  "start_url": "/index.html",
+  "start_url": "/calculator/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
