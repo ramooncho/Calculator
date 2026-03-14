@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finanzas Diego PRO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Segoe UI, system-ui, sans-serif; }
+    .glass { 
+      background: rgba(255,255,255,0.07); 
+      backdrop-filter: blur(16px); 
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    input[type=number] { 
+      -moz-appearance: textfield; 
+      text-align: right; 
+    }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-black to-zinc-950 text-white min-h-screen p-6 md:p-8">
+
+<div class="max-w-4xl mx-auto space-y-8">
+
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Finanzas Diego PRO</h1>
+      <p class="text-zinc-400 mt-1">Distribución semanal inteligente</p>
+    </div>
+    <div class="text-5xl">💰</div>
+  </div>
+
+  <!-- Ingresos, gasto fijo y resultado sobrante -->
+  <div class="glass p-6 md:p-8 rounded-3xl space-y-6">
+    <div>
+      <label class="text-sm text-zinc-400 block mb-2">Pago semanal neto</label>
+      <input id="income" type="number" placeholder="0.00" step="0.01"
+             class="w-full p-5 rounded-2xl bg-zinc-900/70 text-3xl font-medium border border-zinc-700 focus:border-zinc-500 outline-none">
+    </div>
+    <div>
+      <label class="text-sm text-zinc-400 block mb-2">Gasto fijo a restar</label>
+      <input id="fixed" type="number" value="375" step="0.01"
+             class="w-full p-4 rounded-2xl bg-zinc-900/70 text-2xl border border-zinc-700 focus:border-zinc-500 outline-none">
+    </div>
+
+    <!-- Resultado sobrante -->
+    <div class="pt-4 border-t border-zinc-700/50">
+      <p class="text-sm text-zinc-400 mb-1">Dinero disponible para repartir</p>
+      <p id="available" class="text-3xl font-bold text-emerald-400">$0.00</p>
+    </div>
+  </div>
+
+  <!-- Porcentajes y montos -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+    <div class="glass p-5 rounded-2xl text-center">
+      <p class="text-zinc-400 text-sm mb-2">Roth IRA %</p>
+      <input id="pctRoth" type="number" value="20" min="0" step="1"
+             class="w-full p-3 rounded-xl bg-zinc-900/70 text-xl text-center border border-zinc-700 focus:border-green-600 outline-none">
+      <p id="roth" class="text-2xl font-bold text-green-400 mt-3">$0.00</p>
+    </div>
+
+    <div class="glass p-5 rounded-2xl text-center">
+      <p class="text-zinc-400 text-sm mb-2">HYSA %</p>
+      <input id="pctSave" type="number" value="50" min="0" step="1"
+             class="w-full p-3 rounded-xl bg-zinc-900/70 text-xl text-center border border-zinc-700 focus:border-yellow-600 outline-none">
+      <p id="save" class="text-2xl font-bold text-yellow-400 mt-3">$0.00</p>
+    </div>
+
+    <div class="glass p-5 rounded-2xl text-center">
+      <p class="text-zinc-400 text-sm mb-2">Inversión %</p>
+      <input id="pctInvest" type="number" value="20" min="0" step="1"
+             class="w-full p-3 rounded-xl bg-zinc-900/70 text-xl text-center border border-zinc-700 focus:border-blue-600 outline-none">
+      <p id="invest" class="text-2xl font-bold text-blue-400 mt-3">$0.00</p>
+    </div>
+
+    <div class="glass p-5 rounded-2xl text-center">
+      <p class="text-zinc-400 text-sm mb-2">Personal %</p>
+      <input id="pctPersonal" type="number" value="10" min="0" step="1"
+             class="w-full p-3 rounded-xl bg-zinc-900/70 text-xl text-center border border-zinc-700 focus:border-purple-600 outline-none">
+      <p id="personal" class="text-2xl font-bold text-purple-400 mt-3">$0.00</p>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div class="glass p-6 md:p-8 rounded-3xl">
+    <canvas id="chart" class="max-h-[320px] md:max-h-[380px]"></canvas>
+  </div>
+
+</div>
+
+<script>
+let chart = null;
+
+function formatMoney(num) {
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function calculate() {
+  const income = parseFloat(document.getElementById('income').value) || 0;
+  const fixed  = parseFloat(document.getElementById('fixed').value)  || 0;
+  const available = Math.max(income - fixed, 0);
+
+  // Mostrar dinero disponible
+  document.getElementById('available').textContent = formatMoney(available);
+  document.getElementById('available').className = available > 0 
+    ? 'text-3xl font-bold text-emerald-400' 
+    : 'text-3xl font-bold text-zinc-500';
+
+  let pctRoth     = parseFloat(document.getElementById('pctRoth').value)     || 0;
+  let pctInvest   = parseFloat(document.getElementById('pctInvest').value)   || 0;
+  let pctSave     = parseFloat(document.getElementById('pctSave').value)     || 0;
+  let pctPersonal = parseFloat(document.getElementById('pctPersonal').value) || 0;
+
+  const totalPct = pctRoth + pctInvest + pctSave + pctPersonal;
+  const factor = totalPct > 0 ? 1 / totalPct : 0;
+
+  const roth     = available * pctRoth     * factor;
+  const invest   = available * pctInvest   * factor;
+  const save     = available * pctSave     * factor;
+  const personal = available * pctPersonal * factor;
+
+  document.getElementById('roth').textContent     = formatMoney(roth);
+  document.getElementById('invest').textContent   = formatMoney(invest);
+  document.getElementById('save').textContent     = formatMoney(save);
+  document.getElementById('personal').textContent = formatMoney(personal);
+
+  updateChart(roth, invest, save, personal);
+}
+
+function updateChart(r, i, s, p) {
+  if (chart) chart.destroy();
+
+  const total = r + i + s + p;
+  if (total <= 0) {
+    const ctx = document.getElementById('chart').getContext('2d');
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    return;
+  }
+
+  const ctx = document.getElementById('chart');
+  chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Roth IRA', 'HYSA', 'Inversión', 'Personal'],
+      datasets: [{
+        data: [r, i, s, p],
+        backgroundColor: ['#4ade80', '#facc15', '#3b82f6', '#a78bfa'],
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.4)'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#e5e5e5', font: { size: 14 }, padding: 20 }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ${formatMoney(ctx.raw)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// Eventos
+['income','fixed','pctRoth','pctInvest','pctSave','pctPersonal'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calculate);
+});
+
+calculate(); // Inicio
+</script>
+
+</body>
+</html>
